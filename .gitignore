@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.env
+.venv
+.venv-wsl/
+.idea/
+outputs/*.jsonl
+outputs/*.csv
+outputs/report*.json
+outputs/*.log
+outputs/*.out
+outputs/*.err
+!outputs/.gitkeep

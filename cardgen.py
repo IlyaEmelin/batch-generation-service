@@ -28,9 +28,9 @@ __DESCRIPTION_MIN, __DESCRIPTION_MAX = 120, 700
 __SENTENCE_SPLIT = re.compile(r"(?<=[.!?…])\s+")
 # Описание продукта должно содержать от 2 до 5 предложений.
 __DESCRIPTION_SENTENCES = (2, 5)
-PROS_RANGE = (2, 5)
-CONS_RANGE = (1, 3)
-TAGS_RANGE = (3, 8)
+__PROS_RANGE = (2, 5)
+__CONS_RANGE = (1, 3)
+__TAGS_RANGE = (3, 8)
 
 # pros - плюсы продуктов
 # cons - минусы продуктов
@@ -431,9 +431,9 @@ def validate_card(raw_text: str, expected_id: str) -> _ValidationResult:
         if not low <= __count_sentences(description) <= high:
             errors.append("description_sentences")
 
-    __check_string_list(data.get("pros"), "pros", PROS_RANGE, errors)
-    __check_string_list(data.get("cons"), "cons", CONS_RANGE, errors)
-    __check_string_list(data.get("tags"), "tags", TAGS_RANGE, errors)
+    __check_string_list(data.get("pros"), "pros", __PROS_RANGE, errors)
+    __check_string_list(data.get("cons"), "cons", __CONS_RANGE, errors)
+    __check_string_list(data.get("tags"), "tags", __TAGS_RANGE, errors)
 
     return _ValidationResult(valid=not errors, errors=errors, card=data)
 
