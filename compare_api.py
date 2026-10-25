@@ -8,6 +8,7 @@
 Запуск:
     python compare_api.py --rows 30
     python compare_api.py --model openai/gpt-oss-20b --concurrency 1
+    python compare_api.py --rows 30 --reasoning-effort low --max-tokens 500
 """
 
 from __future__ import annotations
@@ -83,6 +84,9 @@ def __request_with_backoff(
     """
     delay = 2.0
     last_error: str | None = None
+    extra_body = None
+    if getattr(args, "reasoning_effort", None):
+        extra_body = {"reasoning": {"effort": args.reasoning_effort}}
     for attempt in range(1, MAX_NETWORK_ATTEMPTS + 1):
         try:
             response = client.chat.completions.create(
@@ -90,6 +94,7 @@ def __request_with_backoff(
                 messages=messages,
                 temperature=temperature,
                 max_tokens=args.max_tokens,
+                extra_body=extra_body,
             )
             return response, None, attempt - 1
         except (openai.APIConnectionError, openai.APITimeoutError) as exc:
@@ -136,6 +141,7 @@ def __compare(args: argparse.Namespace) -> dict:
     predictions: list[dict] = []
     errors_by_reason: dict[str, int] = {}
     request_errors: dict[str, int] = {}
+    hits_max_tokens = 0
     started_at = datetime.now(timezone.utc)
     batch_started = time.perf_counter()
 
@@ -178,6 +184,8 @@ def __compare(args: argparse.Namespace) -> dict:
             record["output_tokens"] = usage.completion_tokens if usage else 0
             record["total_input_tokens"] += record["input_tokens"]
             record["total_output_tokens"] += record["output_tokens"]
+            if record["output_tokens"] >= args.max_tokens:
+                hits_max_tokens += 1
             raw = response.choices[0].message.content or ""
             record["raw_response"] = raw
 
@@ -213,6 +221,8 @@ def __compare(args: argparse.Namespace) -> dict:
         "base_url": args.base_url,
         "rows": len(predictions),
         "subset": "каждый k-й товар входного файла",
+        "max_tokens": args.max_tokens,
+        "reasoning_effort": getattr(args, "reasoning_effort", None),
         "elapsed_sec": round(elapsed, 2),
         "valid_rate": round(valid / len(predictions), 4) if predictions else 0.0,
         "retry_rate": (
@@ -234,6 +244,7 @@ def __compare(args: argparse.Namespace) -> dict:
         "total_output_tokens": sum(
             record["total_output_tokens"] for record in predictions
         ),
+        "hits_max_tokens": hits_max_tokens,
         "request_error_rows": sum(1 for record in predictions if record["error"]),
         "request_errors": dict(
             sorted(request_errors.items(), key=lambda item: -item[1])
@@ -262,6 +273,15 @@ def __parse_args() -> argparse.Namespace:
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=350)
+    parser.add_argument(
+        "--reasoning-effort",
+        choices=("low", "medium", "high"),
+        default=None,
+        help=(
+            "уровень reasoning для OpenRouter; без флага параметр не передаётся "
+            "(reasoning-модель иначе тратит max_tokens на скрытые рассуждения)"
+        ),
+    )
     return parser.parse_args()
 
 

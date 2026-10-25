@@ -4,10 +4,11 @@ __pycache__/
 .venv
 .venv-wsl/
 .idea/
+outputs/*.json
 outputs/*.jsonl
 outputs/*.csv
-outputs/report*.json
 outputs/*.log
 outputs/*.out
 outputs/*.err
+outputs/*.pid
 !outputs/.gitkeep

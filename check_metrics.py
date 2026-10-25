@@ -318,6 +318,10 @@ def __build_costs(main: dict, api: dict | None) -> dict:
             - `model`: название API-модели.
             - `total_input_tokens`: суммарное количество входных токенов.
             - `total_output_tokens`: суммарное количество выходных токенов.
+            Если суммарный фактический usage равен нулю, считаем стоимость API
+            недоступной и оставляем `costs.api = None`: ноль токенов означает,
+            что запросы не дошли до модели или провайдер не вернул usage, а не
+            что API бесплатный.
 
     Returns:
         Словарь с расчётом стоимости. Формат результата:
@@ -370,19 +374,22 @@ def __build_costs(main: dict, api: dict | None) -> dict:
         "api": None,
     }
     if api and api.get("rows"):
-        api_per_1000 = __cost_api_per_1000(
-            api.get("total_input_tokens") or 0,
-            api.get("total_output_tokens") or 0,
-            api["rows"],
-        )
-        costs["api"] = {
-            "model": api.get("model"),
-            "cards": api["rows"],
-            "input_tokens": api.get("total_input_tokens") or 0,
-            "output_tokens": api.get("total_output_tokens") or 0,
-            "rub_per_1000": round(api_per_1000, 3),
-            "rub_per_month_50k": round(api_per_1000 / 1000 * MONTHLY_CARDS, 2),
-        }
+        input_tokens = api.get("total_input_tokens") or 0
+        output_tokens = api.get("total_output_tokens") or 0
+        if input_tokens + output_tokens > 0:
+            api_per_1000 = __cost_api_per_1000(
+                input_tokens,
+                output_tokens,
+                api["rows"],
+            )
+            costs["api"] = {
+                "model": api.get("model"),
+                "cards": api["rows"],
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "rub_per_1000": round(api_per_1000, 3),
+                "rub_per_month_50k": round(api_per_1000 / 1000 * MONTHLY_CARDS, 2),
+            }
     return costs
 
 
@@ -522,11 +529,9 @@ def main() -> None:
         f"на 50k карточек: {costs['vllm']['rub_per_month_50k']} ₽"
     )
     if costs["api"]:
-        tokens = costs["api"]["input_tokens"] + costs["api"]["output_tokens"]
-        if tokens:
-            print(f"стоимость API: {costs['api']['rub_per_1000']} ₽/1000")
-        else:
-            print("стоимость API: н/д — ни один запрос не дошёл до модели (usage = 0)")
+        print(f"стоимость API: {costs['api']['rub_per_1000']} ₽/1000")
+    elif api_summary:
+        print("стоимость API: н/д — нет фактического usage от провайдера")
     print(f"отчёт: {report_path}")
 
 
