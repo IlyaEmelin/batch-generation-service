@@ -97,7 +97,16 @@ class CardResult:
 
 
 def make_client(base_url: str, api_key: str) -> OpenAI:
-    """Клиент OpenAI API с таймаутом, достаточным для длинной генерации."""
+    """
+    Клиент OpenAI API с таймаутом, достаточным для длинной генерации.
+
+    Args:
+        base_url: базовый путь
+        api_key: апи кей
+
+    Returns:
+        OpenAI: Клиент OpenAI API
+    """
     return OpenAI(
         base_url=base_url,
         api_key=api_key,
@@ -107,9 +116,24 @@ def make_client(base_url: str, api_key: str) -> OpenAI:
 
 
 def generate_card(
-    client: OpenAI, tokenizer, row: dict, args: argparse.Namespace
+    client: OpenAI,
+    tokenizer,
+    row: dict,
+    args: argparse.Namespace,
 ) -> CardResult:
-    """Генерирует карточку одного товара с повторами только по нарушению формата."""
+    """
+    Генерирует карточку одного товара с повторами только по нарушению формата.
+    TODO: похоже эту функцию надо перенести в файл 'cardgen.py'
+
+    Args:
+        client: клиент ИИ агента
+        tokenizer: токенизатор
+        row: прочитанная строка
+        args: аргументы запуска генерации карточек
+
+    Returns:
+        CardResult: сгенерированная карточка товара
+    """
     reserve = RETRY_RESERVE if args.max_attempts > 1 else 0
     prepared = prepare_prompt(row, tokenizer, limit=args.limit - reserve)
     messages = prepared.messages
@@ -182,8 +206,20 @@ def generate_card(
     return result
 
 
-def percentile(values: list[float], q: float) -> float:
-    """Перцентиль по ближайшему рангу: без интерполяции, чтобы не выдумывать хвост."""
+def __percentile(values: list[float], q: float) -> float:
+    """
+    Возвращает q-перцентиль методом ближайшего ранга.
+
+    Метод не использует интерполяцию: результатом всегда будет одно из
+    фактически наблюдавшихся значений. Если список пустой, возвращает 0.0.
+
+    Args:
+        values: значения
+        q: Доля от 0.0 до 1.0, например 0.5 для p50 или 0.95 для p95.
+
+    Returns:
+        float: Значение q-перцентиля.
+    """
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -191,8 +227,13 @@ def percentile(values: list[float], q: float) -> float:
     return ordered[min(index, len(ordered) - 1)]
 
 
-def environment_info() -> dict:
-    """Окружение замера: без него числа отчёта нечем воспроизвести."""
+def __environment_info() -> dict:
+    """
+    Окружение замера: без него числа отчёта нечем воспроизвести.
+
+    Returns:
+        dict: данные об окружении замера
+    """
 
     def package_version(name: str) -> str | None:
         try:
@@ -215,7 +256,7 @@ def environment_info() -> dict:
         )
         gpu = completed.stdout.strip() or None
     except Exception:  # nvidia-smi может отсутствовать в PATH: это не повод падать
-        gpu = None
+        pass
 
     return {
         "python": platform.python_version(),
@@ -227,7 +268,7 @@ def environment_info() -> dict:
     }
 
 
-def server_version(base_url: str) -> str | None:
+def __server_version(base_url: str) -> str | None:
     """
     Версия vLLM из `/version`: часть окружения в отчёте
 
@@ -339,7 +380,7 @@ def __build_summary(
             "model": args.model,
         },
         "server": {"base_url": args.base_url, "vllm_version": version},
-        "environment": environment_info(),
+        "environment": __environment_info(),
         "valid_rate": round(valid / len(results), 4) if results else 0.0,
         "retry_rate": round(retried / len(results), 4) if results else 0.0,
         "errors_by_reason": dict(sorted(errors.items(), key=lambda item: -item[1])),
@@ -349,11 +390,11 @@ def __build_summary(
         "latency_mean_sec": (
             round(sum(latencies) / len(latencies), 3) if latencies else 0.0
         ),
-        "latency_p95_sec": round(percentile(latencies, 0.95), 3),
+        "latency_p95_sec": round(__percentile(latencies, 0.95), 3),
         "request_mean_sec": (
             round(sum(requests) / len(requests), 3) if requests else 0.0
         ),
-        "request_p95_sec": round(percentile(requests, 0.95), 3),
+        "request_p95_sec": round(__percentile(requests, 0.95), 3),
         "total_input_tokens": sum(result.total_input_tokens for result in results),
         "total_output_tokens": sum(result.total_output_tokens for result in results),
         "max_planned_input_tokens": max(
@@ -455,7 +496,7 @@ def main() -> None:
         elapsed,
         args,
         started_at,
-        server_version(args.base_url),
+        __server_version(args.base_url),
     )
     summary_path = (
         Path(args.summary) if args.summary else output_path.with_suffix(".summary.json")
