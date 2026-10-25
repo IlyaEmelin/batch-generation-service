@@ -42,7 +42,7 @@
 
 Что из этого следует:
 
-- **`repetition_penalty 1.05` не принят, несмотря на лучший результат на dev.** Гипотеза выглядела убедительно: +12.5 п.п. валидности на 40 товарах, описания длиннее (246 против 216 символов), токенов меньше. Но на полном прогоне 300 карточек с этим параметром итоговая валидность упала до 0.820 против 0.903 у базового конфига, а брак по `description_sentences` вырос с 11 до 36 карточек: длинные описания чаще выходят за лимит в пять предложений. Выборка в 40 товаров слишком мала, чтобы ловить такие эффекты, поэтому решение принималось по полному прогону, а не по dev. Артефакты отклонённой гипотезы сохранены: `outputs/rp105_validation.{jsonl,summary.json}`.
+- **`repetition_penalty 1.05` не принят, несмотря на лучший результат на dev.** Гипотеза выглядела убедительно: +12.5 п.п. валидности на 40 товарах, описания длиннее (246 против 216 символов), токенов меньше. Но на полном прогоне 300 карточек с этим параметром итоговая валидность упала до 0.820 против 0.903 у базового конфига, а брак по `description_sentences` вырос с 11 до 36 карточек: длинные описания чаще выходят за лимит в пять предложений. Выборка в 40 товаров слишком мала, чтобы ловить такие эффекты, поэтому решение принималось по полному прогону, а не по dev; сырые промежуточные файлы этого A/B-прогона не входят в сдачу.
 - **`max_tokens 250` рвёт JSON.** Три ответа из 40 упёрлись в лимит (`hits_max_tokens=3`) и не закрыли скобку — это `not_json` в браке. 350 берём с запасом.
 - **`temperature 0.3` не даёт выигрыша**, зато лишает воспроизводимости: результат 0.425 против 0.400 — в пределах шума на 40 наблюдениях.
 
@@ -158,7 +158,7 @@ python compare_api.py --rows 30 --reasoning-effort low --max-tokens 500
 
 `gpt-oss-20b` — reasoning-модель: скрытые рассуждения входят в `completion_tokens`, поэтому при `max_tokens 350` ответ обрывался до JSON. Флаг `--reasoning-effort low` ограничивает reasoning, а `--max-tokens 500` даёт запас на сам JSON; фактический расход модели на валидной карточке — ~210 выходных токенов. Без флага параметр reasoning не передаётся.
 
-`compare_api.py` и `run_batch.py` делят один и тот же `cardgen.py`, поэтому сравнение идёт на одинаковом входе и одинаковых правилах приёмки; для проверки кода без внешней сети есть прогон на локальном эндпоинте: `python compare_api.py --rows 5 --base-url http://127.0.0.1:8000/v1 --model Qwen/Qwen2.5-1.5B-Instruct --output outputs/api_local_smoke.jsonl --summary outputs/api_local_smoke.summary.json`.
+`compare_api.py` и `run_batch.py` делят один и тот же `cardgen.py`, поэтому сравнение идёт на одинаковом входе и одинаковых правилах приёмки. Для проверки кода без внешней сети можно запустить локальный smoke-прогон: `python compare_api.py --rows 5 --base-url http://127.0.0.1:8000/v1 --model Qwen/Qwen2.5-1.5B-Instruct --output outputs/api_local_smoke.jsonl --summary outputs/api_local_smoke.summary.json`; эти smoke-файлы являются временными и не входят в сдачу.
 
 Команда запуска сервера целиком (`scripts/start_vllm.sh` подставляет эти значения по умолчанию):
 
@@ -171,15 +171,15 @@ vllm serve Qwen/Qwen2.5-1.5B-Instruct \
 
 ## Артефакты
 
-- `outputs/predictions.jsonl` — строка на каждый `product_id` в порядке входа, поля `input_tokens`, `attempts`, `validation_errors`, `valid`.
-- `outputs/predictions.summary.json` — сводка прогона: время, throughput, валидность, причины брака, токены.
+В сдачу включены только финальные артефакты, необходимые для проверки без повторного запуска кода:
+
+- `outputs/predictions.jsonl` — основной локальный прогон: строка на каждый `product_id` в порядке входа, поля `input_tokens`, `attempts`, `validation_errors`, `valid`.
 - `outputs/report.json` — конфиг прогона и окружение, метрики, таблица `concurrency`, расчёт стоимости, эксперименты по параметрам, сравнение с API.
-- `outputs/sweep_c<N>.{jsonl,summary.json}` — прогоны для таблицы `concurrency`.
-- `outputs/parameter_experiments.csv` — результаты `tune_params.py`.
+- `outputs/parameter_experiments.csv` — агрегированные результаты `tune_params.py`.
 - `outputs/api_predictions.jsonl`, `outputs/api_summary.json` — итоговый прогон через OpenRouter: 30 строк, 30/30 валидных, `reasoning_effort=low`, `max_tokens=500`, фактический usage и стоимость записаны в `outputs/report.json`.
-- `outputs/api_local_smoke.{jsonl,summary.json}` — проверка кода сравнения на локальном эндпоинте.
-- `outputs/rp105_validation.{jsonl,summary.json}` — сохранённый результат отклонённой гипотезы `repetition_penalty 1.05`.
-- `scripts/profile_data.py` — профиль наборов в токенах (числа раздела «Длинный вход»)
+- `scripts/profile_data.py` — профиль наборов в токенах (числа раздела «Длинный вход»).
+
+Сырые smoke/dev/sweep/A-B файлы не входят в сдачу: их агрегированные результаты уже перенесены в `outputs/report.json` и этот README.
 
 ## Стоимость и решение
 
