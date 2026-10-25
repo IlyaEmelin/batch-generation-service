@@ -1,0 +1,279 @@
+{
+  "generated_at": "2026-10-25T08:42:13+00:00",
+  "run": {
+    "input_file": "benchmark.jsonl",
+    "rows": 300,
+    "started_at": "2026-10-22T15:28:06+00:00",
+    "elapsed_sec": 602.36,
+    "throughput_cards_per_sec": 0.498,
+    "concurrency": 16,
+    "params": {
+      "temperature": 0.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "repetition_penalty": 1.0,
+      "max_tokens": 350,
+      "max_attempts": 3,
+      "limit": 1500,
+      "model": "Qwen/Qwen2.5-1.5B-Instruct"
+    },
+    "server": {
+      "base_url": "http://127.0.0.1:8000/v1",
+      "vllm_version": "0.31.0"
+    },
+    "environment": {
+      "python": "3.11.9",
+      "platform": "Windows-10-10.0.26200-SP0",
+      "gpu": "NVIDIA GeForce RTX 2060, 610.62, 6144 MiB",
+      "torch": "2.5.1+cu124",
+      "transformers": "4.47.1",
+      "openai": "2.53.0"
+    },
+    "valid_rate": 0.9033,
+    "retry_rate": 0.4967,
+    "errors_by_reason": {
+      "description_sentences": 11,
+      "cons_count": 10,
+      "description_length": 5,
+      "tags_count": 5,
+      "not_json": 3
+    },
+    "retry_errors_by_reason": {
+      "cons_count": 107,
+      "description_length": 70,
+      "description_sentences": 65,
+      "tags_count": 23,
+      "not_json": 14,
+      "pros_count": 2
+    },
+    "latency_mean_sec": 234.517,
+    "latency_p95_sec": 504.029,
+    "request_mean_sec": 16.989,
+    "request_p95_sec": 27.043,
+    "total_input_tokens": 438678,
+    "total_output_tokens": 99927,
+    "max_planned_input_tokens": 1399,
+    "max_input_tokens": 1379,
+    "truncated_rows": 45
+  },
+  "server": {
+    "startup_sec": 204.0,
+    "vllm_version": "0.31.0",
+    "note": "startup_sec — время от команды запуска до первого успешного /health"
+  },
+  "metrics": {
+    "rows": 300,
+    "valid_count": 271,
+    "valid_rate": 0.9033,
+    "retry_rate": 0.4967,
+    "errors_by_reason": {
+      "description_sentences": 11,
+      "cons_count": 10,
+      "description_length": 5,
+      "tags_count": 5,
+      "not_json": 3
+    },
+    "retry_errors_by_reason": {
+      "cons_count": 107,
+      "description_length": 70,
+      "description_sentences": 65,
+      "tags_count": 23,
+      "not_json": 14,
+      "pros_count": 2
+    },
+    "attempts_histogram": {
+      "1": 151,
+      "2": 104,
+      "3": 45
+    },
+    "duplicate_product_ids": 0,
+    "order_matches_input": true,
+    "max_input_tokens": 1379,
+    "max_planned_input_tokens": 1399,
+    "rows_over_input_limit": 0,
+    "total_input_tokens": 438678,
+    "total_output_tokens": 99927,
+    "truncated_rows": 45,
+    "mean_description_chars": 213.9
+  },
+  "concurrency": [
+    {
+      "concurrency": 1,
+      "rows": 24,
+      "elapsed_sec": 258.61,
+      "throughput_cards_per_sec": 0.093,
+      "latency_mean_sec": 105.731,
+      "latency_p95_sec": 247.695,
+      "request_mean_sec": 7.265,
+      "valid_rate": 0.875,
+      "retry_rate": 0.4583,
+      "errors_total": 4
+    },
+    {
+      "concurrency": 4,
+      "rows": 24,
+      "elapsed_sec": 81.24,
+      "throughput_cards_per_sec": 0.295,
+      "latency_mean_sec": 35.641,
+      "latency_p95_sec": 63.795,
+      "request_mean_sec": 6.815,
+      "valid_rate": 0.875,
+      "retry_rate": 0.4583,
+      "errors_total": 4
+    },
+    {
+      "concurrency": 16,
+      "rows": 24,
+      "elapsed_sec": 33.05,
+      "throughput_cards_per_sec": 0.726,
+      "latency_mean_sec": 18.96,
+      "latency_p95_sec": 32.702,
+      "request_mean_sec": 9.286,
+      "valid_rate": 0.875,
+      "retry_rate": 0.4583,
+      "errors_total": 3
+    },
+    {
+      "concurrency": 32,
+      "rows": 24,
+      "elapsed_sec": 35.79,
+      "throughput_cards_per_sec": 0.671,
+      "latency_mean_sec": 27.508,
+      "latency_p95_sec": 35.27,
+      "request_mean_sec": 15.464,
+      "valid_rate": 0.875,
+      "retry_rate": 0.5,
+      "errors_total": 4
+    }
+  ],
+  "costs": {
+    "tariff_rub_per_hour": 65.0,
+    "price_target_rub_per_1000": 25.0,
+    "vllm": {
+      "cards": 300,
+      "elapsed_sec": 602.36,
+      "rub_per_1000": 36.253,
+      "rub_per_month_50k": 1812.66,
+      "within_target": false,
+      "monthly_cards": 50000
+    },
+    "vllm_24x7": {
+      "rub_per_month": 46800.0,
+      "note": "ВМ работает круглосуточно; сравнение с оплатой только времени партии"
+    },
+    "api": {
+      "model": "openai/gpt-oss-20b",
+      "cards": 30,
+      "input_tokens": 24778,
+      "output_tokens": 9079,
+      "rub_per_1000": 34.677,
+      "rub_per_month_50k": 1733.83
+    }
+  },
+  "tuning": [
+    {
+      "config": "base",
+      "temperature": 0.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "repetition_penalty": 1.0,
+      "max_tokens": 350,
+      "rows": 40,
+      "valid_rate": 0.4,
+      "mean_description_chars": 215.8,
+      "mean_output_tokens": 193.1,
+      "hits_max_tokens": 0,
+      "elapsed_sec": 28.92,
+      "cards_per_sec": 1.383,
+      "errors_by_reason": "cons_count=16; description_length=10; description_sentences=3; tags_count=1"
+    },
+    {
+      "config": "temp_0.3_top_p_0.9",
+      "temperature": 0.3,
+      "top_p": 0.9,
+      "top_k": 0,
+      "repetition_penalty": 1.0,
+      "max_tokens": 350,
+      "rows": 40,
+      "valid_rate": 0.425,
+      "mean_description_chars": 210.9,
+      "mean_output_tokens": 202.4,
+      "hits_max_tokens": 1,
+      "elapsed_sec": 24.47,
+      "cards_per_sec": 1.635,
+      "errors_by_reason": "cons_count=15; description_length=3; description_sentences=4; not_json=1; tags_count=2"
+    },
+    {
+      "config": "rep_penalty_1.05",
+      "temperature": 0.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "repetition_penalty": 1.05,
+      "max_tokens": 350,
+      "rows": 40,
+      "valid_rate": 0.525,
+      "mean_description_chars": 246.3,
+      "mean_output_tokens": 185.6,
+      "hits_max_tokens": 1,
+      "elapsed_sec": 26.19,
+      "cards_per_sec": 1.527,
+      "errors_by_reason": "cons_count=14; description_length=3; description_sentences=4; not_json=1; pros_count=1"
+    },
+    {
+      "config": "rep_penalty_1.1",
+      "temperature": 0.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "repetition_penalty": 1.1,
+      "max_tokens": 350,
+      "rows": 40,
+      "valid_rate": 0.4,
+      "mean_description_chars": 213.8,
+      "mean_output_tokens": 193.2,
+      "hits_max_tokens": 0,
+      "elapsed_sec": 28.31,
+      "cards_per_sec": 1.413,
+      "errors_by_reason": "cons_count=16; description_length=10; description_sentences=3; tags_count=1"
+    },
+    {
+      "config": "max_tokens_250",
+      "temperature": 0.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "repetition_penalty": 1.0,
+      "max_tokens": 250,
+      "rows": 40,
+      "valid_rate": 0.4,
+      "mean_description_chars": 216.8,
+      "mean_output_tokens": 192.1,
+      "hits_max_tokens": 3,
+      "elapsed_sec": 29.81,
+      "cards_per_sec": 1.342,
+      "errors_by_reason": "cons_count=14; description_length=9; description_sentences=3; not_json=2; tags_count=1"
+    }
+  ],
+  "api_comparison": {
+    "model": "openai/gpt-oss-20b",
+    "api_run_date": "2026-10-25",
+    "base_url": "https://openrouter.ai/api/v1",
+    "rows": 30,
+    "subset": "каждый k-й товар входного файла",
+    "max_tokens": 500,
+    "reasoning_effort": "low",
+    "elapsed_sec": 147.5,
+    "valid_rate": 1.0,
+    "retry_rate": 0.0,
+    "network_retries": 0,
+    "errors_by_reason": {},
+    "total_input_tokens": 24778,
+    "total_output_tokens": 9079,
+    "hits_max_tokens": 2,
+    "request_error_rows": 0,
+    "request_errors": {}
+  },
+  "sla": {
+    "target_sec_per_300": 480.0,
+    "measured_sec_per_300_estimate": 602.4,
+    "note": "Измерено на локальной GPU; SLA задания задан для T4 и сравнивается оценкой"
+  }
+}
