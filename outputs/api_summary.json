@@ -6,14 +6,14 @@
   "subset": "каждый k-й товар входного файла",
   "max_tokens": 500,
   "reasoning_effort": "low",
-  "elapsed_sec": 147.5,
+  "elapsed_sec": 115.36,
   "valid_rate": 1.0,
   "retry_rate": 0.0,
   "network_retries": 0,
   "errors_by_reason": {},
-  "total_input_tokens": 24778,
-  "total_output_tokens": 9079,
-  "hits_max_tokens": 2,
+  "total_input_tokens": 24801,
+  "total_output_tokens": 8695,
+  "hits_max_tokens": 1,
   "request_error_rows": 0,
   "request_errors": {}
 }

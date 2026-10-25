@@ -132,40 +132,96 @@ SLA задания (480 с на 300 карточек) задан для T4. **Д
 | GPU | NVIDIA GeForce RTX 2060, 6 ГБ |
 | Драйвер / CUDA | 610.62 / cu124 |
 
-Клиент (Windows): Python 3.11.9, PyTorch 2.5.1+cu124, `transformers`, `openai`, `httpx`, `python-dotenv`. Клиентское окружение пишется в `run.environment` отчёта автоматически.
+Клиент (Windows, `.venv`): Python 3.11.9, `transformers` 4.47.1, `openai` 2.53.0, `httpx` 0.28.1, `python-dotenv` 1.2.4; PyTorch на клиенте не нужен — токенизатор работает без него. Клиентское окружение пишется в `run.environment` отчёта автоматически.
 
-Порядок:
+### 1. Открыть проект и активировать виртуальное окружение
 
 ```powershell
-# 1. Сервер в WSL2 (первый запуск ~204 с, дальше быстрее за счёт кэша)
-wsl -d Ubuntu-22.04 -e bash /mnt/c/PythonProg/batch-generation-service/scripts/start_vllm.sh
-
-# 2. Пакетная генерация: 300 карточек, concurrency 16
-python run_batch.py --input benchmark.jsonl --output outputs/predictions.jsonl --concurrency 16
-
-# 3. Замер concurrency на подвыборке (обновляет таблицу в отчёте)
-powershell -File scripts/run_sweep.ps1 -Concurrency "1;4;16;32" -Rows 24
-
-# 4. Отчёт: метрики, стоимость, сравнение с API, эксперименты
-python check_metrics.py --startup-sec 204
-
-# 5. Подбор параметров (один фактор за раз, 40 товаров, без повторов)
-python tune_params.py --rows 40
-
-# 6. Сравнение с внешней моделью через OpenRouter (ключ в .env: OPENROUTER_API_KEY)
-python compare_api.py --rows 30 --reasoning-effort low --max-tokens 500
+cd C:\PythonProg\batch-generation-service
+.\.venv\Scripts\Activate.ps1
 ```
 
-`gpt-oss-20b` — reasoning-модель: скрытые рассуждения входят в `completion_tokens`, поэтому при `max_tokens 350` ответ обрывался до JSON. Флаг `--reasoning-effort low` ограничивает reasoning, а `--max-tokens 500` даёт запас на сам JSON; фактический расход модели на валидной карточке — ~210 выходных токенов. Без флага параметр reasoning не передаётся.
+Все команды ниже выполняются из корня проекта в PowerShell. Активация `.venv` гарантирует, что используется клиентское окружение с нужными версиями `openai`, `httpx`, `transformers` и `python-dotenv`. Если активация неудобна, вместо `python` можно указывать полный путь `C:\PythonProg\batch-generation-service\.venv\Scripts\python.exe`. Если PowerShell блокирует запуск скрипта активации, разрешите его только для текущего процесса: `Set-ExecutionPolicy -Scope Process Bypass`.
 
-`compare_api.py` и `run_batch.py` делят один и тот же `cardgen.py`, поэтому сравнение идёт на одинаковом входе и одинаковых правилах приёмки. Для проверки кода без внешней сети можно запустить локальный smoke-прогон: `python compare_api.py --rows 5 --base-url http://127.0.0.1:8000/v1 --model Qwen/Qwen2.5-1.5B-Instruct --output outputs/api_local_smoke.jsonl --summary outputs/api_local_smoke.summary.json`; эти smoke-файлы являются временными и не входят в сдачу.
+### 2. Запустить vLLM-сервер в WSL
 
-Команда запуска сервера целиком (`scripts/start_vllm.sh` подставляет эти значения по умолчанию):
+Сервер живёт в отдельном терминале WSL2 (`Ubuntu-22.04`), клиент — в Windows:
+
+```bash
+cd /mnt/c/PythonProg/batch-generation-service
+GPU_UTIL=0.9 bash scripts/start_vllm.sh
+```
+
+Скрипт поднимает OpenAI-compatible endpoint `http://127.0.0.1:8000/v1` с моделью `Qwen/Qwen2.5-1.5B-Instruct`. `GPU_UTIL=0.9` соответствует конфигу из таблицы выше; безопасный дефолт самого скрипта — `0.75`, потому что на 6 ГБ значение `0.9` может не поместиться. Если `0.9` падает с OOM, запускайте `bash scripts/start_vllm.sh` без переменной или с `GPU_UTIL=0.8`.
+
+Первый запуск занимает около 204 секунд (дальше быстрее за счёт кэша HF). `503` сразу после старта — нормальная ситуация: порт уже открыт, но движок модели ещё загружается.
+
+Эквивалентная команда, которую оборачивает скрипт:
 
 ```bash
 vllm serve Qwen/Qwen2.5-1.5B-Instruct \
   --dtype half --max-model-len 4096 --gpu-memory-utilization 0.9 --port 8000
 ```
+
+### 3. Проверить готовность сервера
+
+```powershell
+python scripts\smoke_test.py
+```
+
+Скрипт ждёт `/health = 200` (до `--ready-timeout`, по умолчанию 600 секунд), проверяет список моделей `/v1/models`, делает холодный и тёплый запросы и печатает latency с диагностикой. Благодаря ожиданию готовности первый `503` не роняет проверку.
+
+### 4. Профилировать входные данные
+
+```powershell
+python scripts\profile_data.py dev.jsonl benchmark.jsonl --limit 1500
+```
+
+Скрипт токенизирует отзывы в `dev.jsonl` и `benchmark.jsonl` и показывает распределение длины (p50 / p90 / max), число товаров, которые не помещаются в бюджет 1500 токенов, и эффект дедупликации отзывов. Эти числа объясняют раздел «Длинный вход»: насколько исходные отзывы превышают бюджет и сколько товаров приходится сокращать.
+
+### 5. Повторить подбор параметров генерации
+
+```powershell
+python tune_params.py --input dev.jsonl --rows 40 --concurrency 16 --output outputs/parameter_experiments.csv
+```
+
+`tune_params.py` прогоняет однофакторные эксперименты на 40 товарах `dev.jsonl` (температура и `top_p`, `repetition_penalty`, `max_tokens`) и пишет агрегат в `outputs/parameter_experiments.csv`. Эти строки затем попадают в `outputs/report.json` и в таблицу «Параметры генерации».
+
+### 6. Повторить sweep по concurrency
+
+```powershell
+.\scripts\run_sweep.ps1 -Concurrency "1;4;16;32" -Rows 24 -InputFile benchmark.jsonl -Python "C:\PythonProg\batch-generation-service\.venv\Scripts\python.exe"
+```
+
+Скрипт запускает `run_batch.py` на подвыборке `benchmark.jsonl` для уровней параллельности 1, 4, 16 и 32 и складывает результаты в `outputs/sweep_*.jsonl` вместе со summary-файлами. По ним строится таблица throughput/latency в отчёте и выбирается `concurrency=16`.
+
+### 7. Повторить основной локальный прогон
+
+```powershell
+python run_batch.py --input benchmark.jsonl --output outputs/predictions.jsonl --concurrency 16 --max-attempts 3 --temperature 0.0 --top-p 1.0 --top-k 0 --repetition-penalty 1.0 --max-tokens 350
+```
+
+Основной прогон локальной модели на 300 товарах: для каждой строки собирается промпт в бюджет 1500 токенов, ответ проверяется по контракту карточки, при нарушениях выполняются исправляющие попытки (до трёх). Результат — `outputs/predictions.jsonl` со строкой на каждый `product_id`, полями `input_tokens`, `attempts`, `validation_errors` и `valid`.
+
+### 8. Повторить сравнение с внешним API
+
+```powershell
+python compare_api.py --rows 30 --reasoning-effort low --max-tokens 500 --output outputs/api_predictions.jsonl --summary outputs/api_summary.json
+```
+
+Команда прогоняет те же 30 товаров через OpenRouter (`OPENROUTER_API_KEY` в `.env` или переменных окружения; шаблон файла — `.env.example`, создать копию можно командой `Copy-Item .env.example .env`). `gpt-oss-20b` — reasoning-модель: скрытые рассуждения входят в `completion_tokens`, поэтому без `--reasoning-effort low --max-tokens 500` ответы обрывались до JSON. Фактический расход на валидной карточке — около 210 выходных токенов. Без ключа шаг можно пропустить, но тогда в отчёте не обновятся API-сравнение и его стоимость.
+
+### 9. Пересобрать итоговый отчёт
+
+```powershell
+python check_metrics.py --startup-sec 204
+```
+
+`check_metrics.py` не запускает генерацию заново: он читает сохранённые артефакты (`predictions.jsonl`, sweep summaries, `parameter_experiments.csv`, `api_summary.json`) и пересобирает `outputs/report.json` с метриками качества, таблицей `concurrency`, стоимостью и API-сравнением. `--startup-sec 204` фиксирует измеренное время от запуска vLLM до первого успешного `/health`.
+
+После полного прохода должны обновиться `outputs/predictions.jsonl`, `outputs/report.json`, `outputs/parameter_experiments.csv`, `outputs/sweep_*.jsonl` со summary и файлы API-сравнения `outputs/api_predictions.jsonl` / `outputs/api_summary.json`; состав сдачи описан в разделе «Артефакты».
+
+`compare_api.py` и `run_batch.py` делят один и тот же `cardgen.py`, поэтому локальный и API-прогоны используют одинаковый вход и одинаковые правила приёмки. Для проверки кода без внешней сети можно запустить локальный smoke-прогон через vLLM: `python compare_api.py --rows 5 --base-url http://127.0.0.1:8000/v1 --model Qwen/Qwen2.5-1.5B-Instruct --output outputs/api_local_smoke.jsonl --summary outputs/api_local_smoke.summary.json`; эти smoke-файлы временные и не входят в сдачу.
 
 `startup_sec` в отчёте — время от команды запуска до первого успешного `/health`; модель при этом уже в кэше HF. Модель, base URL и дата прогона пишутся в `outputs/report.json` (`api_comparison.model`, `api_comparison.base_url`, `api_comparison.api_run_date`), параметры output-бюджета — в `api_comparison.max_tokens` и `api_comparison.reasoning_effort`: без них результат сравнения не воспроизводится.
 
