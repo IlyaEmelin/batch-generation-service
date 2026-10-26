@@ -239,7 +239,7 @@ python run_batch.py --input benchmark.jsonl --output outputs/predictions.jsonl -
 ### 8. Повторить сравнение с внешним API
 
 ```bash
-python compare_api.py --rows 30 --reasoning-effort low --max-tokens 500 --json-response-format --output outputs/api_predictions.jsonl --summary outputs/api_summary.json
+python compare_api.py --rows 150 --reasoning-effort low --max-tokens 500 --json-response-format --output outputs/api_predictions.jsonl --summary outputs/api_summary.json
 ```
 
 Команда прогоняет те же 30 товаров через OpenRouter (`OPENROUTER_API_KEY` в `.env` или переменных окружения; шаблон файла — `.env.example`, создать копию можно командой `Copy-Item .env.example .env`). `gpt-oss-20b` — reasoning-модель: скрытые рассуждения входят в `completion_tokens`, поэтому без `--reasoning-effort low --max-tokens 500` ответы обрывались до JSON. Фактический расход на валидной карточке — около 210 выходных токенов. Без ключа шаг можно пропустить, но тогда в отчёте не обновятся API-сравнение и его стоимость.
