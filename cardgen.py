@@ -31,6 +31,11 @@ __DESCRIPTION_SENTENCES = (2, 5)
 __PROS_RANGE = (2, 5)
 __CONS_RANGE = (1, 3)
 __TAGS_RANGE = (3, 8)
+# CJK-диапазоны: иероглифы, кана, хангыль. Модель иногда вставляет их в русский
+# текст, особенно если в отзыве был иностранный фрагмент.
+__CJK_PATTERN = re.compile(
+    r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af]"
+)
 
 # pros - плюсы продуктов
 # cons - минусы продуктов
@@ -44,15 +49,24 @@ SYSTEM_PROMPT = (
     "- product_id — строка, точно как в последней строке запроса; не придумывай новый id;\n"
     "- description — строка от 120 до 700 символов, 2–5 предложений, только факты из данных;\n"
     "- pros — массив из 2–5 непустых строк;\n"
-    "- cons — массив из 1–3 непустых строк, пустой массив недопустим: если явного недостатка "
-    "нет, возьми ограничение из атрибутов (например, «нет автоотключения»);\n"
+    "- cons — массив из 1–3 непустых строк; каждый пункт — реальный минус из отзывов "
+    "или ограничение из атрибутов (размер, вес, совместимость, условия эксплуатации); "
+    "плюсы, выдуманные характеристики и копирование примера недопустимы; "
+    "пустой массив тоже недопустим;\n"
     "- tags — массив из 3–8 непустых строк без символа #.\n"
     "Пиши description тремя предложениями: что это за товар, ключевые характеристики, "
     "для кого подходит. Ничего не выдумывай.\n"
+    "Пиши только на русском языке: не используй китайские, японские и корейские символы. "
+    "Если в отзыве есть иностранный фрагмент, передай его смысл по-русски.\n"
+    "Пример ниже показывает только структуру и объём. Не копируй из него фразы, "
+    "pros, cons или tags.\n"
     "Пример формата:\n"
-    '{"product_id": "P-0001", "description": "Компактный увлажнитель с баком 3.5 л. '
-    'Работает тихо и подходит для детской.", "pros": ["Тихая работа", "Бак на всю ночь"], '
-    '"cons": ["Нет автоотключения"], "tags": ["увлажнитель", "для дома", "детская"]}'
+    '{"product_id": "P-0000", "description": "Настольный органайзер хранит канцелярию '
+    "и мелкие вещи под рукой. Несколько отделений разделяют ручки, заметки и аксессуары, "
+    "поэтому рабочее место остаётся аккуратным. Модель подойдёт для письменного стола "
+    'дома или в офисе.", "pros": ["Несколько отделений", "Компактный размер", '
+    '"Устойчивое основание"], "cons": ["Не подходит для крупных предметов"], '
+    '"tags": ["органайзер", "для стола", "канцелярия", "хранение"]}'
 )
 
 __ERROR_HINTS = {
@@ -68,11 +82,12 @@ __ERROR_HINTS = {
     "pros_count": "в pros должно быть от 2 до 5 пунктов",
     "pros_item": "каждый пункт pros должен быть непустой строкой",
     "cons_not_list": "cons должен быть массивом строк",
-    "cons_count": "в cons должно быть от 1 до 3 пунктов: если недостатка нет, возьми ограничение из атрибутов",
+    "cons_count": "в cons должно быть от 1 до 3 пунктов: возьми реальный минус из отзывов или ограничение из атрибутов товара",
     "cons_item": "каждый пункт cons должен быть непустой строкой",
     "tags_not_list": "tags должен быть массивом строк",
     "tags_count": "в tags должно быть от 3 до 8 пунктов",
     "tags_item": "каждый тег должен быть непустой строкой",
+    "contains_cjk_chars": "текст должен быть только на русском: убери китайские, японские и корейские символы",
     "request_error": "запрос завершился ошибкой, повтори генерацию",
 }
 
@@ -192,6 +207,11 @@ def count_chat_tokens(tokenizer, messages: list[dict]) -> int:
     """
     Считает токены полного запроса вместе с chat-template и промптом генерации.
 
+    `transformers` 4.x возвращает из `apply_chat_template` список токенов, а 5.x
+    — `BatchEncoding` (dict с `input_ids` и `attention_mask`). Без этой развилки
+    `len()` даёт 2 вместо реальной длины, и бюджет 1500 токенов перестаёт
+    проверяться.
+
     Args:
         tokenizer: токенизатор
         messages: сообщения
@@ -199,9 +219,20 @@ def count_chat_tokens(tokenizer, messages: list[dict]) -> int:
     Returns:
         int: количество токенов
     """
-    ids = tokenizer.apply_chat_template(
+    encoded = tokenizer.apply_chat_template(
         messages, tokenize=True, add_generation_prompt=True
     )
+    print("encoded result format:", type(encoded))
+    if hasattr(encoded, "input_ids"):
+        ids = encoded.input_ids
+    elif isinstance(encoded, dict):
+        ids = encoded["input_ids"]
+    else:
+        ids = encoded
+    if ids and isinstance(ids[0], (list, tuple)):
+        ids = ids[0]
+    if not isinstance(ids, (list, tuple)):
+        raise ValueError("Incorrect result format!!!")
     return len(ids)
 
 
@@ -387,6 +418,25 @@ def __check_string_list(
         errors.append(f"{name}_item")
 
 
+def __contains_cjk(value: object) -> bool:
+    """
+    Ищет китайские, японские и корейские символы в строке или списке строк.
+
+    Args:
+        value: проверяемое значение (строка, список или что угодно ещё)
+
+    Returns:
+        bool: True, если найден хотя бы один CJK-символ
+    """
+    if isinstance(value, str):
+        texts = [value]
+    elif isinstance(value, list):
+        texts = [item for item in value if isinstance(item, str)]
+    else:
+        return False
+    return any(__CJK_PATTERN.search(text) for text in texts)
+
+
 def validate_card(raw_text: str, expected_id: str) -> _ValidationResult:
     """
     Проверяет ответ модели по контракту карточки и возвращает все нарушения.
@@ -434,6 +484,14 @@ def validate_card(raw_text: str, expected_id: str) -> _ValidationResult:
     __check_string_list(data.get("pros"), "pros", __PROS_RANGE, errors)
     __check_string_list(data.get("cons"), "cons", __CONS_RANGE, errors)
     __check_string_list(data.get("tags"), "tags", __TAGS_RANGE, errors)
+
+    # Одна ошибка на карточку, даже если CJK нашлись в нескольких полях:
+    # иначе счётчик причин брака раздувается и искажает отчёт.
+    if any(
+        __contains_cjk(value)
+        for value in (description, data.get("pros"), data.get("cons"), data.get("tags"))
+    ):
+        errors.append("contains_cjk_chars")
 
     return _ValidationResult(valid=not errors, errors=errors, card=data)
 

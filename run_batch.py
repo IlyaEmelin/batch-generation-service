@@ -161,16 +161,23 @@ def generate_card(
         if args.repetition_penalty != 1.0:
             extra_body["repetition_penalty"] = args.repetition_penalty
 
+        request: dict = {
+            "model": args.model,
+            "messages": messages,
+            "temperature": args.temperature if attempt == 1 else 0.0,
+            "top_p": args.top_p,
+            "max_tokens": args.max_tokens,
+            "extra_body": extra_body or None,
+        }
+        # vLLM 0.31.0 поддерживает json_object: модель отдаёт голый JSON без
+        # Markdown-обёртки. Флаг нужен, чтобы режим можно было отключить, если
+        # сервер или внешний API его не поддержат.
+        if getattr(args, "json_response_format", False):
+            request["response_format"] = {"type": "json_object"}
+
         started = time.perf_counter()
         try:
-            response = client.chat.completions.create(
-                model=args.model,
-                messages=messages,
-                temperature=args.temperature if attempt == 1 else 0.0,
-                top_p=args.top_p,
-                max_tokens=args.max_tokens,
-                extra_body=extra_body or None,
-            )
+            response = client.chat.completions.create(**request)
         except Exception as exc:  # сетевые ошибки и 5xx: не роняем весь пакет
             result.error = f"{type(exc).__name__}: {exc}"
             result.validation_errors = ["request_error"]
@@ -320,6 +327,11 @@ def __parse_args() -> argparse.Namespace:
     parser.add_argument("--repetition-penalty", type=float, default=1.0)
     parser.add_argument("--max-tokens", type=int, default=350)
     parser.add_argument(
+        "--json-response-format",
+        action="store_true",
+        help='передавать response_format={"type": "json_object"} (vLLM 0.31.0 поддерживает)',
+    )
+    parser.add_argument(
         "--rows", type=int, default=0, help="взять первые N товаров (0 — все)"
     )
     return parser.parse_args()
@@ -377,6 +389,11 @@ def __build_summary(
             "max_attempts": args.max_attempts,
             "limit": args.limit,
             "model": args.model,
+            "response_format": (
+                "json_object"
+                if getattr(args, "json_response_format", False)
+                else None
+            ),
         },
         "server": {"base_url": args.base_url, "vllm_version": version},
         "environment": __environment_info(),

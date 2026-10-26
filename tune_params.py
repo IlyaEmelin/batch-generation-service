@@ -7,7 +7,7 @@
 первого ответа, а не умение исправляющей попытки вытянуть брак.
 
 Запуск:
-    python tune_params.py --input dev.jsonl --rows 20 --concurrency 16
+    python tune_params.py --input dev.jsonl --rows 40 --concurrency 16 --json-response-format
 """
 
 from __future__ import annotations
@@ -27,7 +27,8 @@ from run_batch import CardResult, generate_card, make_client
 
 # Базовая точка — детерминированная генерация: для строгого JSON это дешёвый
 # способ получить воспроизводимый результат. Остальные конфигурации меняют
-# ровно один параметр, чтобы эффект был объяснимым.
+# ровно один фактор, чтобы эффект был объяснимым: temperature вместе с top_p
+# (они работают в паре), top_k, repetition_penalty и max_tokens.
 EXPERIMENTS: list[dict] = [
     {
         "name": "base",
@@ -44,11 +45,32 @@ EXPERIMENTS: list[dict] = [
         "repetition_penalty": 1.0,
     },
     {
-        "name": "rep_penalty_1.05",
-        "temperature": 0.0,
+        "name": "temp_0.7_top_p_0.9",
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "top_k": 0,
+        "repetition_penalty": 1.0,
+    },
+    {
+        "name": "temp_0.3_top_p_1.0",
+        "temperature": 0.3,
         "top_p": 1.0,
         "top_k": 0,
-        "repetition_penalty": 1.05,
+        "repetition_penalty": 1.0,
+    },
+    {
+        "name": "top_k_20",
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "top_k": 20,
+        "repetition_penalty": 1.0,
+    },
+    {
+        "name": "top_k_50",
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "top_k": 50,
+        "repetition_penalty": 1.0,
     },
     {
         "name": "rep_penalty_1.1",
@@ -58,12 +80,27 @@ EXPERIMENTS: list[dict] = [
         "repetition_penalty": 1.1,
     },
     {
+        "name": "rep_penalty_1.2",
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "top_k": 0,
+        "repetition_penalty": 1.2,
+    },
+    {
         "name": "max_tokens_250",
         "temperature": 0.0,
         "top_p": 1.0,
         "top_k": 0,
         "repetition_penalty": 1.0,
         "max_tokens": 250,
+    },
+    {
+        "name": "max_tokens_500",
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "top_k": 0,
+        "repetition_penalty": 1.0,
+        "max_tokens": 500,
     },
 ]
 
@@ -119,6 +156,9 @@ def __run_experiment(
         "top_k": config.top_k,
         "repetition_penalty": config.repetition_penalty,
         "max_tokens": config.max_tokens,
+        "response_format": (
+            "json_object" if getattr(config, "json_response_format", False) else "text"
+        ),
         "rows": len(results),
         "valid_rate": round(len(valid) / len(results), 4) if results else 0.0,
         "mean_description_chars": (
@@ -152,7 +192,7 @@ def __parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--input", default="dev.jsonl")
     parser.add_argument(
-        "--rows", type=int, default=20, help="сколько товаров брать из начала файла"
+        "--rows", type=int, default=40, help="сколько товаров брать из начала файла"
     )
     parser.add_argument("--output", default="outputs/parameter_experiments.csv")
     parser.add_argument("--base-url", default="http://127.0.0.1:8000/v1")
@@ -165,6 +205,11 @@ def __parse_args() -> argparse.Namespace:
     parser.add_argument("--top-p", type=float, default=1.0)
     parser.add_argument("--top-k", type=int, default=0)
     parser.add_argument("--repetition-penalty", type=float, default=1.0)
+    parser.add_argument(
+        "--json-response-format",
+        action="store_true",
+        help='передавать response_format={"type": "json_object"}',
+    )
     return parser.parse_args()
 
 

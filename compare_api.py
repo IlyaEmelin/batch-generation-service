@@ -16,8 +16,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import time
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import httpx
@@ -59,6 +61,40 @@ def __subset(rows: list[dict], count: int) -> list[dict]:
     return [rows[int(index * step)] for index in range(count)]
 
 
+def __retry_after_seconds(exc: Exception) -> float | None:
+    """
+    Достаёт из ответа заголовок `Retry-After` и переводит его в секунды.
+
+    OpenRouter при 429 присылает либо число секунд, либо HTTP-дату; поддержаны
+    оба варианта. Если заголовка нет или он разобран неверно, возвращается
+    `None`, и вызывающий код использует обычный экспоненциальный backoff.
+
+    Args:
+        exc: исключение клиента OpenAI
+
+    Returns:
+        float | None: сколько секунд просит подождать сервер
+    """
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None)
+    if not headers:
+        return None
+    raw = headers.get("retry-after")
+    if not raw:
+        return None
+    try:
+        return max(0.0, float(raw))
+    except (TypeError, ValueError):
+        pass
+    try:
+        moment = parsedate_to_datetime(raw)
+    except (TypeError, ValueError):
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return max(0.0, (moment - datetime.now(timezone.utc)).total_seconds())
+
+
 def __request_with_backoff(
     client: OpenAI,
     args: argparse.Namespace,
@@ -84,30 +120,40 @@ def __request_with_backoff(
     """
     delay = 2.0
     last_error: str | None = None
+    retry_after: float | None = None
     extra_body = None
     if getattr(args, "reasoning_effort", None):
         extra_body = {"reasoning": {"effort": args.reasoning_effort}}
     for attempt in range(1, MAX_NETWORK_ATTEMPTS + 1):
+        request: dict = {
+            "model": args.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": args.max_tokens,
+            "extra_body": extra_body,
+        }
+        if getattr(args, "json_response_format", False):
+            request["response_format"] = {"type": "json_object"}
         try:
-            response = client.chat.completions.create(
-                model=args.model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=args.max_tokens,
-                extra_body=extra_body,
-            )
+            response = client.chat.completions.create(**request)
             return response, None, attempt - 1
         except (openai.APIConnectionError, openai.APITimeoutError) as exc:
             last_error = f"{type(exc).__name__}: {exc}"
         except openai.APIStatusError as exc:
             if exc.status_code == 429 or exc.status_code >= 500:
                 last_error = f"status {exc.status_code}"
+                retry_after = __retry_after_seconds(exc)
             else:
                 return None, f"status {exc.status_code}: {exc}", attempt - 1
         if attempt == MAX_NETWORK_ATTEMPTS:
             break
-        time.sleep(min(delay, 30.0))
-        delay *= 2
+        # Retry-After уважаем, но не ждём дольше минуты. Jitter разводит
+        # одновременные повторы: без него клиенты снова упираются в лимит
+        # синхронно, и backoff превращается в oscillation.
+        base = retry_after if retry_after is not None else delay
+        time.sleep(min(base + random.uniform(0.0, min(1.0, base * 0.25)), 60.0))
+        delay = min(delay * 2, 30.0)
+        retry_after = None
     return None, last_error, MAX_NETWORK_ATTEMPTS - 1
 
 
@@ -273,6 +319,11 @@ def __parse_args() -> argparse.Namespace:
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=350)
+    parser.add_argument(
+        "--json-response-format",
+        action="store_true",
+        help='передавать response_format={"type": "json_object"}',
+    )
     parser.add_argument(
         "--reasoning-effort",
         choices=("low", "medium", "high"),
