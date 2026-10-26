@@ -325,7 +325,7 @@ def __parse_args() -> argparse.Namespace:
         description="Сравнение локального сервиса с внешним API"
     )
     parser.add_argument("--input", default="benchmark.jsonl")
-    parser.add_argument("--rows", type=int, default=30, help="размер подвыборки")
+    parser.add_argument("--rows", type=int, default=150, help="размер подвыборки")
     parser.add_argument("--output", default="outputs/api_predictions.jsonl")
     parser.add_argument("--summary", default="outputs/api_summary.json")
     parser.add_argument("--base-url", default=API_BASE_URL)
