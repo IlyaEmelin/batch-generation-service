@@ -1,11 +1,11 @@
 config,temperature,top_p,top_k,repetition_penalty,max_tokens,response_format,rows,valid_rate,mean_description_chars,mean_output_tokens,hits_max_tokens,elapsed_sec,cards_per_sec,errors_by_reason
-base,0.0,1.0,0,1.0,350,json_object,40,0.55,369.9,225.3,2,26.9,1.487,cons_count=7; contains_cjk_chars=5; description_sentences=5; not_json=2
-temp_0.3_top_p_0.9,0.3,0.9,0,1.0,350,json_object,40,0.575,328.1,212.2,0,19.63,2.038,cons_count=5; contains_cjk_chars=5; description_length=4; description_sentences=5; pros_count=1
-temp_0.7_top_p_0.9,0.7,0.9,0,1.0,350,json_object,40,0.575,284.7,221.0,2,24.07,1.662,cons_count=6; contains_cjk_chars=6; description_sentences=8; not_json=2; tags_count=1
-temp_0.3_top_p_1.0,0.3,1.0,0,1.0,350,json_object,40,0.575,300.7,206.5,0,29.78,1.343,cons_count=6; contains_cjk_chars=6; description_length=1; description_sentences=6
-top_k_20,0.0,1.0,20,1.0,350,json_object,40,0.575,366,224.2,1,24.68,1.621,cons_count=7; contains_cjk_chars=4; description_sentences=6; not_json=1; pros_count=1
-top_k_50,0.0,1.0,50,1.0,350,json_object,40,0.55,369.1,224.8,1,24.69,1.62,cons_count=7; contains_cjk_chars=5; description_sentences=6; not_json=1; pros_count=1
-rep_penalty_1.1,0.0,1.0,0,1.1,350,json_object,40,0.575,366,225.3,1,25.21,1.586,cons_count=7; contains_cjk_chars=4; description_sentences=6; not_json=1; pros_count=1
-rep_penalty_1.2,0.0,1.0,0,1.2,350,json_object,40,0.3,217.6,178.1,1,20.79,1.924,cons_count=7; contains_cjk_chars=6; description_length=12; description_sentences=14; not_json=1
-max_tokens_250,0.0,1.0,0,1.0,250,json_object,40,0.5,343.6,215.8,7,24.84,1.61,cons_count=7; contains_cjk_chars=4; description_sentences=3; not_json=7
-max_tokens_500,0.0,1.0,0,1.0,500,json_object,40,0.55,369.9,227.1,1,26.01,1.538,cons_count=7; contains_cjk_chars=5; description_sentences=6; not_json=1; pros_count=1
+base,0.0,1.0,0,1.0,350,json_object,40,0.575,360.5,223.1,1,30.29,1.32,cons_count=6; contains_cjk_chars=5; description_sentences=6; not_json=1; pros_count=1
+temp_0.3_top_p_0.9,0.3,0.9,0,1.0,350,json_object,40,0.575,318.0,210.8,1,20.05,1.995,cons_count=9; contains_cjk_chars=3; description_sentences=6; not_json=1
+temp_0.7_top_p_0.9,0.7,0.9,0,1.0,350,json_object,40,0.55,326.8,212.5,1,23.22,1.722,cons_count=6; contains_cjk_chars=4; description_length=3; description_sentences=7; not_json=1
+temp_0.3_top_p_1.0,0.3,1.0,0,1.0,350,json_object,40,0.625,303.5,214.4,0,22.79,1.755,cons_count=7; contains_cjk_chars=5; description_length=2; description_sentences=5
+top_k_20,0.0,1.0,20,1.0,350,json_object,40,0.575,365.9,223.4,1,24.36,1.642,cons_count=7; contains_cjk_chars=5; description_sentences=6; not_json=1; pros_count=1
+top_k_50,0.0,1.0,50,1.0,350,json_object,40,0.575,365.7,224.0,1,25.63,1.561,cons_count=7; contains_cjk_chars=5; description_sentences=6; not_json=1; pros_count=1
+rep_penalty_1.1,0.0,1.0,0,1.1,350,json_object,40,0.575,360.5,223.0,1,25.73,1.554,cons_count=6; contains_cjk_chars=5; description_sentences=6; not_json=1; pros_count=1
+rep_penalty_1.2,0.0,1.0,0,1.2,350,json_object,40,0.3,217.6,179.1,1,21.08,1.898,cons_count=7; contains_cjk_chars=6; description_length=12; description_sentences=14; not_json=1
+max_tokens_250,0.0,1.0,0,1.0,250,json_object,40,0.475,347.2,215.9,8,25.17,1.589,cons_count=7; contains_cjk_chars=5; description_sentences=3; not_json=7
+max_tokens_500,0.0,1.0,0,1.0,500,json_object,40,0.575,365.7,227.7,1,27.03,1.48,cons_count=7; contains_cjk_chars=5; description_sentences=6; not_json=1; pros_count=1
