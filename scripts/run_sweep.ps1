@@ -5,7 +5,7 @@
 # таблицу concurrency в report.json.
 param(
     [string]$Concurrency = "1,4,16,32",
-    [int]$Rows = 24,
+    [int]$Rows = 128,
     [string]$InputFile = "benchmark.jsonl",
     [string]$Python = "python",
     [switch]$JsonResponseFormat
