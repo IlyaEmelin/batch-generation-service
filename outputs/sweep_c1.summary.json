@@ -1,9 +1,9 @@
 {
   "input_file": "benchmark.jsonl",
-  "rows": 24,
-  "started_at": "2026-10-26T08:26:17+00:00",
-  "elapsed_sec": 144.13,
-  "throughput_cards_per_sec": 0.167,
+  "rows": 128,
+  "started_at": "2026-10-26T14:07:13+00:00",
+  "elapsed_sec": 1250.88,
+  "throughput_cards_per_sec": 0.102,
   "concurrency": 1,
   "params": {
     "temperature": 0.0,
@@ -21,33 +21,36 @@
     "vllm_version": "0.31.0"
   },
   "environment": {
-    "python": "3.10.12",
-    "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26300-SP0",
     "gpu": "NVIDIA GeForce RTX 2060, 610.62, 6144 MiB",
-    "torch": "2.13.0",
-    "transformers": "5.17.0",
-    "openai": "3.36.1"
+    "torch": null,
+    "transformers": "4.47.1",
+    "openai": "2.53.0"
   },
-  "valid_rate": 0.9167,
-  "retry_rate": 0.2083,
+  "valid_rate": 0.9375,
+  "retry_rate": 0.375,
   "errors_by_reason": {
-    "contains_cjk_chars": 1,
+    "contains_cjk_chars": 4,
+    "description_sentences": 3,
     "cons_count": 1
   },
   "retry_errors_by_reason": {
-    "contains_cjk_chars": 4,
-    "description_sentences": 3,
-    "cons_count": 2,
-    "description_length": 1,
-    "pros_count": 1
+    "description_sentences": 29,
+    "contains_cjk_chars": 27,
+    "cons_count": 11,
+    "description_length": 2,
+    "pros_count": 2,
+    "tags_count": 2,
+    "not_json": 2
   },
-  "latency_mean_sec": 78.102,
-  "latency_p95_sec": 137.081,
-  "request_mean_sec": 4.773,
-  "request_p95_sec": 6.684,
-  "total_input_tokens": 33035,
-  "total_output_tokens": 6482,
-  "max_planned_input_tokens": 1360,
-  "max_input_tokens": 1360,
-  "truncated_rows": 3
+  "latency_mean_sec": 568.415,
+  "latency_p95_sec": 1210.624,
+  "request_mean_sec": 6.401,
+  "request_p95_sec": 10.344,
+  "total_input_tokens": 197163,
+  "total_output_tokens": 41821,
+  "max_planned_input_tokens": 1376,
+  "max_input_tokens": 1376,
+  "truncated_rows": 19
 }
