@@ -242,6 +242,15 @@ def __environment_info() -> dict:
     """
 
     def package_version(name: str) -> str | None:
+        """
+        Возвращает версию установленного Python-пакета.
+
+        Args:
+            name: Имя пакета для lookup через `importlib.metadata`.
+
+        Returns:
+            str | None: Версия пакета или `None`, если пакет не установлен.
+        """
         try:
             return importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
@@ -487,6 +496,9 @@ def __write_card_results_jsonl(args: Namespace, finished: list[CardResult]) -> P
 
 
 def main() -> None:
+    """
+    Точка входа: запускает пакетную генерацию и записывает результаты/summary.
+    """
     args = __parse_args()
     rows = load_rows(Path(args.input))
 

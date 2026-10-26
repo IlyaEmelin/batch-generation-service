@@ -15,6 +15,7 @@ import argparse
 import csv
 import glob
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean
@@ -46,6 +47,38 @@ def __read_json(path: Path) -> dict | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def __cast_csv_value(value: str) -> object:
+    """
+    Приводит значение из CSV к числу, если это безопасно.
+
+    Args:
+        value: Строковое значение из CSV.
+
+    Returns:
+        object: `int`, `float` или исходная строка, если числовое приведение
+        невозможно.
+    """
+    for caster in (int, float):
+        try:
+            return caster(value)
+        except ValueError:
+            continue
+    return value
+
+
+def __warning(message: str) -> None:
+    """
+    Печатает предупреждение с цветным префиксом в интерактивной консоли.
+
+    Args:
+        message: Текст предупреждения без префикса `внимание:`.
+    """
+    prefix = "внимание:"
+    if sys.stdout.isatty():
+        prefix = "\033[33mвнимание:\033[0m"
+    print(f"{prefix} {message}")
+
+
 def __read_experiments(path: Path) -> list[dict] | None:
     """
     Читает CSV-файл с результатами подбора параметров.
@@ -66,17 +99,9 @@ def __read_experiments(path: Path) -> list[dict] | None:
     if not path.exists():
         return None
 
-    def cast(value: str) -> object:
-        for caster in (int, float):
-            try:
-                return caster(value)
-            except ValueError:
-                continue
-        return value
-
     with path.open(encoding="utf-8", newline="") as handle:
         return [
-            {key: cast(value) for key, value in row.items()}
+            {key: __cast_csv_value(value) for key, value in row.items()}
             for row in csv.DictReader(handle)
         ]
 
@@ -321,6 +346,17 @@ def __markdown_fenced_count(rows: list[dict]) -> int:
 
 
 def __block(items: list[dict] | None) -> dict[str, int | float] | None:
+    """
+    Собирает метрики Markdown-обёрток для одного набора ответов.
+
+    Args:
+        items: Строки `predictions.jsonl`/`api_predictions.jsonl` или `None`,
+            если соответствующий прогон отсутствует.
+
+    Returns:
+        dict[str, int | float] | None: Блок с количеством ответов, числом
+        Markdown-ограждений и их долей; `None`, если входной набор отсутствует.
+    """
     if items is None:
         return None
     responses = sum(1 for row in items if row.get("raw_response"))
@@ -347,6 +383,16 @@ def __format_postprocessing(rows: list[dict], api_rows: list[dict] | None) -> di
 
 
 def __tokens(row: dict, key: str) -> int:
+    """
+    Возвращает число токенов, предпочитая сумму по всем попыткам.
+
+    Args:
+        row: Строка результата генерации.
+        key: Базовый ключ токенов, например `input_tokens` или `output_tokens`.
+
+    Returns:
+        int: Значение `total_<key>`, если оно есть, иначе значение `<key>`.
+    """
     return int(row.get(f"total_{key}") or row.get(key) or 0)
 
 
@@ -506,6 +552,8 @@ def __build_report(
     postprocessing: dict | None = None,
 ) -> dict:
     """
+    Собирает итоговый отчёт по сохранённым артефактам генерации.
+
     Args:
         args: Аргументы запуска скрипта. Используются для добавления параметров
             запуска в отчёт, например `startup_sec`.
@@ -522,6 +570,8 @@ def __build_report(
             Если сравнение не выполнялось, передаётся `None`.
         experiments: Результаты tuning/экспериментов с параметрами генерации,
             если они запускались. Если экспериментов не было, передаётся `None`.
+        postprocessing: Метрики форматной постобработки ответов, включая частоту
+            Markdown-ограждений для локального и API-прогонов.
 
     Returns:
         Словарь итогового отчёта, готовый для сериализации в
@@ -574,6 +624,9 @@ def __parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """
+    Точка входа: пересчитывает метрики и записывает `outputs/report.json`.
+    """
     args = __parse_args()
     rows = load_rows(Path(args.predictions))
 
@@ -587,7 +640,7 @@ def main() -> None:
     # запуска, которых в нём нет.
     if main_summary is None and previous and isinstance(previous.get("run"), dict):
         main_summary = previous["run"]
-        print(f"внимание: нет сводки {args.summary}, беру run из {args.report}")
+        __warning(f"нет сводки {args.summary}, беру run из {args.report}")
     if main_summary is None:
         raise SystemExit(f"нет сводки прогона: {args.summary}")
 
@@ -599,7 +652,7 @@ def main() -> None:
     table = __build_concurrency_table(sweep)
     if not table and previous and isinstance(previous.get("concurrency"), list):
         table = previous["concurrency"]
-        print(f"внимание: нет sweep-сводок, беру concurrency из {args.report}")
+        __warning(f"нет sweep-сводок, беру concurrency из {args.report}")
 
     api_summary = __read_json(Path(args.api_summary))
     if (
@@ -608,7 +661,7 @@ def main() -> None:
         and isinstance(previous.get("api_comparison"), dict)
     ):
         api_summary = previous["api_comparison"]
-        print(f"внимание: нет {args.api_summary}, беру api_comparison из {args.report}")
+        __warning(f"нет {args.api_summary}, беру api_comparison из {args.report}")
 
     api_predictions_path = Path(args.api_predictions)
     api_rows = (
@@ -618,7 +671,7 @@ def main() -> None:
     experiments = __read_experiments(Path(args.experiments))
     if experiments is None and previous and isinstance(previous.get("tuning"), list):
         experiments = previous["tuning"]
-        print(f"внимание: нет {args.experiments}, беру tuning из {args.report}")
+        __warning(f"нет {args.experiments}, беру tuning из {args.report}")
 
     metrics = __compute_metrics(rows, input_rows)
     postprocessing = __format_postprocessing(rows, api_rows)
@@ -629,13 +682,13 @@ def main() -> None:
 
     costs = __build_costs(main_summary, api_summary)
     report = __build_report(
-        args,
-        metrics,
-        main_summary,
-        table,
-        costs,
-        api_summary,
-        experiments,
+        args=args,
+        metrics=metrics,
+        main=main_summary,
+        table=table,
+        costs=costs,
+        api=api_summary,
+        experiments=experiments,
         postprocessing=postprocessing,
     )
 

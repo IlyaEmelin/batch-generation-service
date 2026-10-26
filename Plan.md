@@ -39,9 +39,10 @@
 Причина: transformers 5.x возвращает из `apply_chat_template` не список, а
 `BatchEncoding` с ключами `input_ids`/`attention_mask`, поэтому `len()` давал 2.
 Следствие — бюджет 1500 токенов фактически не проверялся, а обрезка отзывов не
-срабатывала. `count_chat_tokens` исправлен: поддерживаются список (4.x),
-`BatchEncoding` (5.x) и вложенный батч. После правки `max_planned_input_tokens`
-совпал с фактическим `max_input_tokens` (1399).
+срабатывала. `count_chat_tokens` исправлен: теперь он вызывает
+`apply_chat_template(..., return_dict=True)` и требует dict-like результат с
+`input_ids`; при другом формате падает с явной ошибкой. После правки
+`max_planned_input_tokens` совпал с фактическим `max_input_tokens` (1399).
 
 ## 3. Эксперименты и итоговый прогон
 
@@ -76,7 +77,7 @@
 - `outputs/parameter_experiments.csv` — 10 конфигов.
 - `outputs/sweep_c{1,4,16,32}.summary.json` — таблица `concurrency`.
 - `outputs/api_predictions.jsonl`, `outputs/api_summary.json` — 30 строк API.
-- `outputs/report.json` — собран 2026-10-26T08:45 UTC.
+- `outputs/report.json` — собран 2026-10-26T12:38 UTC.
 
 ## 6. Остаточные риски
 

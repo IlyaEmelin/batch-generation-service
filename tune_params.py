@@ -214,6 +214,9 @@ def __parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """
+    Точка входа: запускает сетку параметров и сохраняет CSV с результатами.
+    """
     args = __parse_args()
     rows = load_rows(Path(args.input))[: max(1, args.rows)]
     tokenizer = AutoTokenizer.from_pretrained(args.model)

@@ -95,6 +95,27 @@ def __retry_after_seconds(exc: Exception) -> float | None:
     return max(0.0, (moment - datetime.now(timezone.utc)).total_seconds())
 
 
+def __sleep_before_retry(delay: float, retry_after: float | None) -> float:
+    """
+    Ждёт перед повтором сетевого запроса и возвращает следующий backoff-delay.
+
+    `Retry-After` уважается, но фактический сон ограничен минутой. Jitter
+    разводит одновременные повторы: без него клиенты снова синхронно упираются
+    в лимит, и backoff превращается в oscillation.
+
+    Args:
+        delay: Текущая задержка экспоненциального backoff в секундах.
+        retry_after: Значение заголовка `Retry-After` в секундах или `None`.
+
+    Returns:
+        float: Следующая задержка экспоненциального backoff в секундах.
+    """
+    base = retry_after if retry_after is not None else delay
+    jitter = random.uniform(0.0, min(1.0, base * 0.25))
+    time.sleep(min(base + jitter, 60.0))
+    return min(delay * 2, 30.0)
+
+
 def __request_with_backoff(
     client: OpenAI,
     args: argparse.Namespace,
@@ -147,12 +168,7 @@ def __request_with_backoff(
                 return None, f"status {exc.status_code}: {exc}", attempt - 1
         if attempt == MAX_NETWORK_ATTEMPTS:
             break
-        # Retry-After уважаем, но не ждём дольше минуты. Jitter разводит
-        # одновременные повторы: без него клиенты снова упираются в лимит
-        # синхронно, и backoff превращается в oscillation.
-        base = retry_after if retry_after is not None else delay
-        time.sleep(min(base + random.uniform(0.0, min(1.0, base * 0.25)), 60.0))
-        delay = min(delay * 2, 30.0)
+        delay = __sleep_before_retry(delay=delay, retry_after=retry_after)
         retry_after = None
     return None, last_error, MAX_NETWORK_ATTEMPTS - 1
 
@@ -337,6 +353,9 @@ def __parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """
+    Точка входа: запускает API-сравнение и сохраняет summary-файл.
+    """
     args = __parse_args()
     summary = __compare(args)
     summary_path = Path(args.summary)

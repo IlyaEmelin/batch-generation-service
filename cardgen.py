@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Sequence, Generator
@@ -207,10 +208,10 @@ def count_chat_tokens(tokenizer, messages: list[dict]) -> int:
     """
     Считает токены полного запроса вместе с chat-template и промптом генерации.
 
-    `transformers` 4.x возвращает из `apply_chat_template` список токенов, а 5.x
-    — `BatchEncoding` (dict с `input_ids` и `attention_mask`). Без этой развилки
-    `len()` даёт 2 вместо реальной длины, и бюджет 1500 токенов перестаёт
-    проверяться.
+    Контракт зафиксирован через `return_dict=True`: токенизатор должен вернуть
+    dict-like объект с `input_ids`. Это fail-fast защита от изменений
+    transformers: если формат ответа изменится, скрипт упадёт с понятной ошибкой,
+    а не начнёт считать `len()` от контейнера вместо реальной длины токенов.
 
     Args:
         tokenizer: токенизатор
@@ -219,20 +220,41 @@ def count_chat_tokens(tokenizer, messages: list[dict]) -> int:
     Returns:
         int: количество токенов
     """
-    encoded = tokenizer.apply_chat_template(
-        messages, tokenize=True, add_generation_prompt=True
-    )
-    print("encoded result format:", type(encoded))
-    if hasattr(encoded, "input_ids"):
-        ids = encoded.input_ids
-    elif isinstance(encoded, dict):
-        ids = encoded["input_ids"]
-    else:
-        ids = encoded
+    try:
+        encoded = tokenizer.apply_chat_template(
+            messages,
+            tokenize=True,
+            add_generation_prompt=True,
+            return_dict=True,
+        )
+    except TypeError as exc:
+        raise TypeError(
+            "tokenizer.apply_chat_template должен поддерживать return_dict=True. "
+            "Зафиксируйте совместимую версию transformers или поправьте "
+            "count_chat_tokens под новый формат ответа."
+        ) from exc
+
+    if not isinstance(encoded, Mapping) or "input_ids" not in encoded:
+        raise TypeError(
+            "tokenizer.apply_chat_template(..., return_dict=True) должен вернуть "
+            "dict-like объект с ключом input_ids. Проверьте версию transformers "
+            "и формат chat template."
+        )
+
+    ids = encoded["input_ids"]
     if ids and isinstance(ids[0], (list, tuple)):
+        if len(ids) != 1:
+            raise TypeError(
+                "tokenizer.apply_chat_template вернул batch из нескольких "
+                "последовательностей; count_chat_tokens ожидает один запрос."
+            )
         ids = ids[0]
     if not isinstance(ids, (list, tuple)):
-        raise ValueError("Incorrect result format!!!")
+        raise TypeError(
+            "tokenizer.apply_chat_template(..., return_dict=True)['input_ids'] "
+            "должен быть списком токенов. Проверьте версию transformers и "
+            "поправьте count_chat_tokens под новый формат ответа."
+        )
     return len(ids)
 
 
@@ -293,7 +315,12 @@ def prepare_prompt(row: dict, tokenizer, limit: int = DEFAULT_LIMIT) -> _Prepare
 
     messages = __build_messages(row, [reviews[index] for index in selected])
     messages, stats = __fit_selected_reviews_to_token_limit(
-        row, reviews, selected, tokenizer, limit, messages
+        row=row,
+        reviews=reviews,
+        selected=selected,
+        tokenizer=tokenizer,
+        limit=limit,
+        messages=messages,
     )
     return _PreparedPrompt(messages=messages, stats=stats)
 
