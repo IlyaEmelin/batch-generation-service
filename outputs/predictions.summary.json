@@ -1,0 +1,58 @@
+{
+  "input_file": "benchmark.jsonl",
+  "rows": 300,
+  "started_at": "2026-10-26T08:32:11+00:00",
+  "elapsed_sec": 346.38,
+  "throughput_cards_per_sec": 0.866,
+  "concurrency": 16,
+  "params": {
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "repetition_penalty": 1.0,
+    "max_tokens": 350,
+    "max_attempts": 3,
+    "limit": 1500,
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "response_format": "json_object"
+  },
+  "server": {
+    "base_url": "http://127.0.0.1:8000/v1",
+    "vllm_version": "0.31.0"
+  },
+  "environment": {
+    "python": "3.10.12",
+    "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "gpu": "NVIDIA GeForce RTX 2060, 610.62, 6144 MiB",
+    "torch": "2.13.0",
+    "transformers": "5.17.0",
+    "openai": "3.36.1"
+  },
+  "valid_rate": 0.9367,
+  "retry_rate": 0.3533,
+  "errors_by_reason": {
+    "contains_cjk_chars": 8,
+    "description_sentences": 7,
+    "tags_count": 2,
+    "cons_count": 1,
+    "not_json": 1
+  },
+  "retry_errors_by_reason": {
+    "description_sentences": 63,
+    "contains_cjk_chars": 54,
+    "cons_count": 27,
+    "not_json": 9,
+    "description_length": 8,
+    "tags_count": 7,
+    "pros_count": 3
+  },
+  "latency_mean_sec": 172.09,
+  "latency_p95_sec": 323.791,
+  "request_mean_sec": 11.909,
+  "request_p95_sec": 17.21,
+  "total_input_tokens": 445220,
+  "total_output_tokens": 96049,
+  "max_planned_input_tokens": 1399,
+  "max_input_tokens": 1399,
+  "truncated_rows": 45
+}

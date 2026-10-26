@@ -1,0 +1,53 @@
+{
+  "input_file": "benchmark.jsonl",
+  "rows": 24,
+  "started_at": "2026-10-26T08:26:17+00:00",
+  "elapsed_sec": 144.13,
+  "throughput_cards_per_sec": 0.167,
+  "concurrency": 1,
+  "params": {
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "repetition_penalty": 1.0,
+    "max_tokens": 350,
+    "max_attempts": 3,
+    "limit": 1500,
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "response_format": "json_object"
+  },
+  "server": {
+    "base_url": "http://127.0.0.1:8000/v1",
+    "vllm_version": "0.31.0"
+  },
+  "environment": {
+    "python": "3.10.12",
+    "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "gpu": "NVIDIA GeForce RTX 2060, 610.62, 6144 MiB",
+    "torch": "2.13.0",
+    "transformers": "5.17.0",
+    "openai": "3.36.1"
+  },
+  "valid_rate": 0.9167,
+  "retry_rate": 0.2083,
+  "errors_by_reason": {
+    "contains_cjk_chars": 1,
+    "cons_count": 1
+  },
+  "retry_errors_by_reason": {
+    "contains_cjk_chars": 4,
+    "description_sentences": 3,
+    "cons_count": 2,
+    "description_length": 1,
+    "pros_count": 1
+  },
+  "latency_mean_sec": 78.102,
+  "latency_p95_sec": 137.081,
+  "request_mean_sec": 4.773,
+  "request_p95_sec": 6.684,
+  "total_input_tokens": 33035,
+  "total_output_tokens": 6482,
+  "max_planned_input_tokens": 1360,
+  "max_input_tokens": 1360,
+  "truncated_rows": 3
+}

@@ -7,7 +7,13 @@ __pycache__/
 outputs/*
 !outputs/.gitkeep
 !outputs/predictions.jsonl
+!outputs/predictions.summary.json
 !outputs/report.json
 !outputs/api_predictions.jsonl
 !outputs/api_summary.json
 !outputs/parameter_experiments.csv
+
+!outputs/sweep_c1.summary.json
+!outputs/sweep_c4.summary.json
+!outputs/sweep_c16.summary.json
+!outputs/sweep_c32.summary.json
